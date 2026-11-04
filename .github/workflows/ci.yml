@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install
+        run: pip install -e ".[dev,spark]"
+      - name: Unit, pipeline and Spark tests
+        run: pytest -q
+      - name: Smoke run on synthetic data
+        run: |
+          hc-lakehouse generate --landing data/landing
+          hc-lakehouse run --landing data/landing --out data/lake
+        env:
+          HC_LAKEHOUSE_SALT: ci-only-salt
